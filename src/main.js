@@ -10,6 +10,7 @@ async function startApp() {
     console.log('Ammo.js ready');
 
     const speedometer = document.getElementById('speedometer');
+    const info = document.getElementById('info');
 
     // 1. Setup Scene
     const sceneManager = new SceneManager();
@@ -21,7 +22,11 @@ async function startApp() {
 
     // 3. Load World & Extract Car Spawn
     const worldManager = new WorldManager(sceneManager.scene, physics);
-    const { carBody } = await worldManager.loadWorld('/assets/world.glb');
+    const { carBody } = await worldManager.loadWorld('/assets/world.glb', (progress) => {
+        info.innerHTML = `Generating Collision Mesh: ${(progress * 100).toFixed(1)}%`;
+    });
+
+    info.innerHTML = 'Ammo.js Raycast vehicle demo<br>Press W,A,S,D to move.';
 
     // 4. Setup Input
     const actions = {};
