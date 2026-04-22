@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Three.js + Ammo.js Raycast Vehicle</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            color: #ffffff;
+            font-family: 'Inter', system-ui, sans-serif;
+            margin: 0px;
+            overflow: hidden;
+            background-color: #0a0a0c;
+        }
+
+        #speedometer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #00f2ff;
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+        }
+
+        #info {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            pointer-events: none;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="speedometer">0.0 km/h</div>
+    <div id="info">Ammo.js Raycast vehicle demo<br>Press W,A,S,D to move.</div>
+
+    <!-- Ammo.js WASM Loader -->
+    <script src="/ammo/ammo.wasm.js"></script>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
