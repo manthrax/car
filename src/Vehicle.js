@@ -36,7 +36,7 @@ export default class Vehicle {
         this.suspensionRestLength = 0.6;
         this.rollInfluence = 0.2;
 
-        this.steeringIncrement = .04;
+        this.steeringIncrement = .01;
         this.steeringClamp = .5;
         this.maxEngineForce = 2000;
         this.maxBreakingForce = 100;
@@ -72,7 +72,7 @@ export default class Vehicle {
         const cabinBox = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * 0.4, this.chassisHeight * 0.25, this.chassisLength * 0.25));
         const cabinTrans = new Ammo.btTransform();
         cabinTrans.setIdentity();
-        cabinTrans.setOrigin(new Ammo.btVector3(0, this.chassisHeight * 1.5, -this.chassisLength * 0.05));
+        cabinTrans.setOrigin(new Ammo.btVector3(0, this.chassisHeight * 1.7, -this.chassisLength * 0.05));
         shape.addChildShape(cabinTrans, cabinBox);
 
         const transform = new Ammo.btTransform();
@@ -195,6 +195,14 @@ export default class Vehicle {
         }
 
         return speed;
+    }
+
+    applyFlipForce() {
+        if (!this.body) return;
+        // Apply an upward force to the top of the car to help flip it
+        bv0.setValue(0, this.massVehicle * 15, 0); // Force vector
+        bv1.setValue(0, 1.5, 0); // Relative position (roof)
+        this.body.applyForce(bv0, bv1);
     }
 
     reset() {

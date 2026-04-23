@@ -202,26 +202,42 @@ async function startApp() {
 
         vehicle.init();
 
-        return {
+        let isDisposed = false;
+        let simObject = {
+            resetHoldTime: 0,
             update: (allowInput) => {
                 const dt = sceneManager.clock.getDelta();
                 physics.update(dt);
                 
                 const activeActions = allowInput ? actions : { acceleration: false, braking: false, left: false, right: false, reset: false };
-                const speed = vehicle.update(activeActions, sceneManager.camera, sceneManager.controls, sceneManager.desiredDistance);
-
+                
+                // Handle R key hold logic
                 if (activeActions.reset) {
-                    if (spawns.length) {
-                        let rng = (Math.random() * spawns.length) | 0;
-                        vehicle.initialPos.copy(spawns[rng].position);
-                        vehicle.initialQuat.copy(spawns[rng].quaternion);
+                    simObject.resetHoldTime += dt;
+                    // Apply flip force while holding R
+                    vehicle.applyFlipForce();
+                    
+                    if (simObject.resetHoldTime > 3.0) { 
+                        if (spawns.length) {
+                            let rng = (Math.random() * spawns.length) | 0;
+                            vehicle.initialPos.copy(spawns[rng].position);
+                            vehicle.initialQuat.copy(spawns[rng].quaternion);
+                        }
+                        vehicle.reset();
+                        simObject.resetHoldTime = 0;
+                        actions.reset = false; 
                     }
-                    vehicle.reset();
-                    actions.reset = false;
+                    info.innerHTML = `HOLD R TO FLIP / LONG HOLD TO RESET (${(3.0 - simObject.resetHoldTime).toFixed(1)}s)`;
+                } else {
+                    simObject.resetHoldTime = 0;
+                    info.innerHTML = 'Press W,A,S,D to move. Press R to flip/reset.';
                 }
+
+                const speed = vehicle.update(activeActions, sceneManager.camera, sceneManager.controls, sceneManager.desiredDistance);
                 speedometer.innerHTML = (Math.abs(speed)).toFixed(1) + " <span style='font-size:1rem'>KM/H</span>";
             },
             dispose: async () => {
+                isDisposed = true;
                 window.removeEventListener('keydown', onKeyDown);
                 window.removeEventListener('keyup', onKeyUp);
                 
@@ -234,6 +250,7 @@ async function startApp() {
                 physics.dispose();
             }
         };
+        return simObject;
     }
 }
 

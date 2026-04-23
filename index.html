@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <title>Three.js + Ammo.js Raycast Vehicle</title>
     <meta charset="utf-8">
@@ -22,7 +23,8 @@
             background: rgba(0, 0, 0, 0.7);
             display: flex;
             align-items: center;
-            justify-content: flex-start; /* Align to left for a more modern 'HUD' look */
+            justify-content: flex-start;
+            /* Align to left for a more modern 'HUD' look */
             padding-left: 10%;
             z-index: 1000;
             backdrop-filter: blur(20px);
@@ -38,7 +40,8 @@
             font-size: 3.5rem;
             letter-spacing: -2px;
             margin-bottom: 3rem;
-            font-weight: 200; /* Super light font as requested */
+            font-weight: 200;
+            /* Super light font as requested */
             line-height: 1;
         }
 
@@ -194,12 +197,13 @@
         }
     </style>
 </head>
+
 <body>
     <div id="container"></div>
     <div id="ui-overlay">
         <div id="menu-container">
-            <h1>ANTIGRAVITY <span class="accent">RACING</span></h1>
-            
+            <h1>AG<span class="accent">RACE</span></h1>
+
             <div class="selection-group">
                 <h3>SELECT TRACK</h3>
                 <div class="options" id="map-options">
@@ -239,4 +243,5 @@
     <script src="ammo/ammo.wasm.js"></script>
     <script type="module" src="src/main.js"></script>
 </body>
+
 </html>
