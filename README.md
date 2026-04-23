@@ -1,72 +1,46 @@
-# Antigravity Racing - High-Performance Physics Simulation
+# Antigravity Racing - Technical Physics Simulation
 
-A premium, open-source car physics simulation built with **Three.js** and **Ammo.js**. This project demonstrates advanced physics integration, spatial partitioning for terrain collisions, and a modern "attract-mode" UI.
+A Three.js and Ammo.js based vehicle dynamics simulation focusing on high-fidelity raycast vehicle implementation and optimized terrain collision.
 
-![Menu Concept](car_sim_menu_concept_1776944213086.png)
+## Technical Architecture
 
-## 🚀 Features
+### Physics Integration
+- **`btRaycastVehicle`**: Uses Bullet's raycast vehicle model for suspension and traction.
+- **`btCompoundShape`**: Chassis is defined as a compound shape of multiple box primitives for more accurate collision response and center-of-mass management.
+- **Rescue Mechanics**: Implements roof-point force application for vehicle righting and time-accumulated state resets.
 
-- **Advanced Vehicle Physics**: Utilizing `btRaycastVehicle` from Ammo.js (Bullet Physics) for realistic suspension, friction, and engine dynamics.
-- **Spatial Grid Partitioning**: Custom `WorldManager` that splits large terrain meshes into a spatial grid to optimize collision detection and prevent physics engine stutter.
-- **Attract Mode UI**: A modern, glassmorphic selection menu that floats over the live simulation, allowing real-time map and vehicle switching.
-- **Physics-Aware Camera**: A custom follow-camera utility that uses raycasting to prevent clipping through terrain and environment geometry.
-- **Procedural Spawning**: Automatic terrain scanning via raycasting to find safe, flat spawn points if none are defined in the source assets.
-- **CI/CD Integrated**: Automated deployment to GitHub Pages via GitHub Actions.
+### Collision Optimization
+- **Spatial Grid Partitioning**: `WorldManager` partitions large terrain meshes into a grid-based spatial map.
+- **`btBvhTriangleMeshShape`**: Each grid cell generates an independent triangle mesh shape to maintain high physics frame rates on complex geometry.
+- **Time-Sliced Generation**: Asynchronous collision mesh generation using `requestAnimationFrame` to prevent main-thread blocking during world initialization.
 
-## 🛠 Tech Stack
+### Camera & Controls
+- **Raycast-Based Occlusion**: `CameraFollow` utility performs world-space raycasting from the look-at target to the camera position to prevent geometry clipping.
+- **Distance Constraints**: Implements a persistent `desiredDistance` logic that allows temporary collision overrides with automatic recovery.
+- **Modular Design**: Decoupled control synchronization allows for easy swapping of input schemas or camera behaviors.
 
-- **Core**: HTML5, Vanilla JavaScript (ES6 Modules)
-- **3D Engine**: [Three.js](https://threejs.org/)
-- **Physics Engine**: [Ammo.js](https://github.com/kripken/ammo.js/) (Bullet Physics WASM port)
-- **Bundler**: [Vite](https://vitejs.dev/)
-- **Assets**: GLTF/GLB models with custom mesh extraction for chassis and wheels.
+### Lifecycle & State Management
+- **Resource Disposal**: Standardized `.dispose()` patterns across `SceneManager` and `Physics` to clear WASM heap memory and GPU resources during world transitions.
+- **Attract Mode**: Decoupled initialization allows the simulation to run in a background state (input-locked) while the menu system is active.
 
-## 🏁 Getting Started
+## Core Modules
 
-### Prerequisites
+- `src/Physics.js`: Ammo.js world orchestration and raycasting interface.
+- `src/Vehicle.js`: `btRaycastVehicle` wrapper and chassis/wheel synchronization.
+- `src/WorldManager.js`: GLB parsing, geometry merging, and spatial grid generation.
+- `src/CameraFollow.js`: Constraint-based follow logic with physics occlusion.
+- `src/SceneManager.js`: WebGL context management and lighting/environment setup.
 
-- Node.js (v16 or higher)
-- npm or yarn
+## Development
 
-### Installation
+```bash
+npm install
+npm run dev
+```
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/manthrax/car.git
-   cd car
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-4. Open your browser to `http://localhost:5173`.
-
-## 🎮 Controls
-
-- **W / Up**: Accelerate
-- **S / Down**: Brake / Reverse
-- **A / Left**: Steering Left
-- **D / Right**: Steering Right
-- **R**: Respawn at a random point
-- **Mouse Wheel**: Zoom Camera
-- **Escape**: Open Menu / Change Map & Car
-
-## 📂 Project Structure
-
-- `src/Physics.js`: Core Ammo.js world management and raycasting.
-- `src/Vehicle.js`: Vehicle class handling chassis/wheel sync and physics application.
-- `src/WorldManager.js`: Async GLB loading and spatial collision generation.
-- `src/CameraFollow.js`: Physics-aware camera smoothing and collision logic.
-- `src/SceneManager.js`: Three.js scene setup, environment mapping, and lighting.
-- `src/main.js`: App entry point, UI orchestration, and main loop.
-
-## 📜 License
-
-MIT License. Free to use and modify for personal or commercial projects.
+### Controls
+- **WASD / Arrows**: Vehicle control.
+- **R (Hold)**: Apply upward force to roof (Flip).
+- **R (Long Hold)**: Full state reset.
+- **Escape**: Toggle Menu / Pause Input.
+- **Wheel**: Zoom.
