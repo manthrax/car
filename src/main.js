@@ -22,7 +22,8 @@ async function startApp() {
 
     // 3. Load World & Extract Car Spawn
     const worldManager = new WorldManager(sceneManager.scene, physics);
-    const { carBody } = await worldManager.loadWorld('/assets/world.glb', (progress) => {
+    const assetPath = `${import.meta.env.BASE_URL}assets/world.glb`.replace(/\/+/g, '/');
+    const { carBody } = await worldManager.loadWorld(assetPath, (progress) => {
         info.innerHTML = `Generating Collision Mesh: ${(progress * 100).toFixed(1)}%`;
     });
 
