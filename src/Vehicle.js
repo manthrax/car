@@ -9,6 +9,7 @@ export default class Vehicle {
         this.physics = physics;
         this.scene = scene;
         this.initialPos = pos.clone();
+        this.initialPos.y += 1;
         this.initialQuat = quat.clone();
 
         // Vehicle constants (from Demo)

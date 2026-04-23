@@ -10,6 +10,20 @@ export default class WorldManager {
     }
 
     async loadWorld(path, onProgress) {
+        return this.loadTerrain(path, onProgress);
+    }
+    async loadCar(path) {
+        const gltf = await this.loader.loadAsync(path);
+        const world = gltf.scene;
+        const carBody = world.getObjectByName("Body");
+        if (carBody) {
+            //carBody.scale.multiplyScalar(.5)
+            carBody.updateMatrixWorld(true);
+            this.scene.attach(carBody);
+        }
+        return carBody;
+    }
+    async loadTerrain(path, onProgress) {
         const gltf = await this.loader.loadAsync(path);
         const world = gltf.scene;
 
@@ -18,19 +32,12 @@ export default class WorldManager {
         this.scene.add(world);
         world.updateMatrixWorld(true);
 
-        const terrain = world.getObjectByName("static_terrain");
+        const terrain = world;//.getObjectByName("static_terrain");
         if (terrain) {
             await this.createTerrainCollision(terrain, onProgress);
         }
+        return world;
 
-        const carBody = world.getObjectByName("Body");
-        if (carBody) {
-            //carBody.scale.multiplyScalar(.5)
-            carBody.updateMatrixWorld(true);
-            this.scene.attach(carBody);
-        }
-
-        return { world, carBody };
     }
 
     /*
@@ -78,7 +85,7 @@ export default class WorldManager {
         });
 
         let processedTriangles = 0;
-        let spawnPos = new THREE.Vector3(0, 4, -20);
+        //let spawnPos = new THREE.Vector3(0, 4, -20);
 
         const amV1 = new Ammo.btVector3();
         const amV2 = new Ammo.btVector3();

@@ -20,12 +20,14 @@ async function startApp() {
     const physics = new Physics();
     physics.init();
 
+    let assetPath = (file) => `${import.meta.env.BASE_URL}assets/${file}`.replace(/\/+/g, '/');
     // 3. Load World & Extract Car Spawn
     const worldManager = new WorldManager(sceneManager.scene, physics);
-    const assetPath = `${import.meta.env.BASE_URL}assets/world.glb`.replace(/\/+/g, '/');
-    const { carBody } = await worldManager.loadWorld(assetPath, (progress) => {
+    let world = await worldManager.loadWorld(assetPath("world.glb"), (progress) => {
         info.innerHTML = `Generating Collision Mesh: ${(progress * 100).toFixed(1)}%`;
     });
+
+    const carBody = await worldManager.loadCar(assetPath("car.glb"));
 
     info.innerHTML = 'Ammo.js Raycast vehicle demo<br>Press W,A,S,D to move.';
 
@@ -47,13 +49,21 @@ async function startApp() {
     });
 
     // 5. Setup Vehicle at Spawn Point
-    let spawnPos = new THREE.Vector3(0, 4, -20);
+    let spawnPos = new THREE.Vector3(0, 80, -20);
     let spawnQuat = new THREE.Quaternion(0, 0, 0, 1);
 
+    let spawns = [];
+    world.traverse(e => e.name.startsWith("Spawn") && spawns.push(e))
+    spawns.forEach(s => sceneManager.scene.attach(s));
+    if (spawns.length) {
+        let rng = (Math.random() * spawns.length) | 0
+        spawnPos = spawns[rng].position;
+        spawnQuat = spawns[rng].quaternion;
+    }
     if (carBody) {
-        spawnPos.copy(carBody.position);
+        //spawnPos.copy(carBody.position);
         //spawnPos.x += 2; // Offset from the model as in your demo
-        spawnPos.y += -.5;
+        //spawnPos.y += 100.5;
     }
 
     const vehicle = new Vehicle(physics, sceneManager.scene, spawnPos, spawnQuat);
@@ -71,6 +81,7 @@ async function startApp() {
     vehicle.createChassisMesh = () => {
         let m = carBody.clone(true);
         m.position.set(0, .5, 0)
+        m.scale.multiplyScalar(60);
         let o = new THREE.Object3D();
         o.add(m)
         sceneManager.scene.add(o)
@@ -95,6 +106,11 @@ async function startApp() {
         const speed = vehicle.update(actions, sceneManager.camera, sceneManager.controls);
 
         if (actions.reset) {
+            if (spawns.length) {
+                let rng = (Math.random() * spawns.length) | 0
+                vehicle.initialPos.copy(spawns[rng].position);
+                vehicle.initialQuat.copy(spawns[rng].quaternion);
+            }
             vehicle.reset();
             actions.reset = false; // Trigger once
         }
