@@ -114,7 +114,8 @@ export default class Vehicle {
             wheelInfo.set_m_wheelsDampingCompression(this.suspensionCompression);
             wheelInfo.set_m_frictionSlip(this.friction);
             wheelInfo.set_m_rollInfluence(this.rollInfluence);
-            this.wheelMeshes[index] = this.createWheelMesh(radius, width, isFront);
+            const isRight = pos.x > 0;
+            this.wheelMeshes[index] = this.createWheelMesh(radius, width, isFront, isRight);
         };
 
         addWheel(true, new Ammo.btVector3(this.wheelHalfTrackFront, this.wheelAxisHeightFront, this.wheelAxisFrontPosition), this.wheelRadiusFront, this.wheelWidthFront, 0);
@@ -123,7 +124,7 @@ export default class Vehicle {
         addWheel(false, new Ammo.btVector3(-this.wheelHalfTrackBack, this.wheelAxisHeightBack, this.wheelAxisPositionBack), this.wheelRadiusBack, this.wheelWidthBack, 3);
     }
 
-    createWheelMesh(radius, width, isFront) {
+    createWheelMesh(radius, width, isFront, isRight) {
         const materialInteractive = new THREE.MeshPhongMaterial({ color: 0x990000 });
         const geometry = new THREE.CylinderGeometry(radius, radius, width, 24, 1);
         geometry.rotateZ(isFront ? -(Math.PI / 2) : (Math.PI / 2));
@@ -205,19 +206,19 @@ export default class Vehicle {
 
     applyFlipForce() {
         if (!this.body) return;
-        
+
         // Get current transform and rotation basis
         const transform = this.body.getWorldTransform();
         const basis = transform.getBasis();
-        
+
         // Extract the local Y-axis (Row 1) which represents the 'up' direction of the car
         const up = basis.getRow(1);
-        
+
         // Calculate the world-space offset of the roof: local Up axis * 1.5 units
         bv1.setValue(up.x() * 1.5, up.y() * 1.5, up.z() * 1.5);
-        
+
         // Apply a global upward force at that roof position
-        bv0.setValue(0, this.massVehicle * 15, 0); 
+        bv0.setValue(0, this.massVehicle * 15, 0);
         this.body.applyForce(bv0, bv1);
     }
 
