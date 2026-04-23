@@ -89,7 +89,9 @@ async function startApp() {
         const reloadOnSelect = async () => {
             loadingOverlay.style.display = 'flex';
             loadingBar.style.width = '0%';
-            if (currentSimulation) await currentSimulation.dispose();
+            const oldSim = currentSimulation;
+            currentSimulation = null;
+            if (oldSim) await oldSim.dispose();
             currentSimulation = await runSimulation(selectedMap, selectedCar);
         };
 
@@ -241,10 +243,10 @@ async function startApp() {
                 window.removeEventListener('keydown', onKeyDown);
                 window.removeEventListener('keyup', onKeyUp);
                 
-                // Remove world and car meshes
+                // Clean up managers and vehicle (Physics + Graphics)
+                vehicle.dispose();
+                worldManager.dispose();
                 sceneManager.scene.remove(world);
-                if (vehicle.chassisMesh) sceneManager.scene.remove(vehicle.chassisMesh);
-                vehicle.wheelMeshes.forEach(m => sceneManager.scene.remove(m));
                 sceneManager.scene.remove(wheelMaster);
 
                 physics.dispose();

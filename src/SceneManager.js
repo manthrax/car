@@ -37,13 +37,26 @@ export default class SceneManager {
             this.desiredDistance = Math.max(this.controls.minDistance, Math.min(this.controls.maxDistance, this.desiredDistance));
         }, { passive: false });
 
-        const ambientLight = new THREE.AmbientLight(0x404040);
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
         this.scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(10, 10, 5);
-        dirLight.castShadow = true;
-        this.scene.add(dirLight);
+        this.dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        this.dirLight.position.set(100, 200, 50);
+        this.dirLight.castShadow = true;
+        
+        // Optimize shadow frustum for large world
+        this.dirLight.shadow.camera.top = 200;
+        this.dirLight.shadow.camera.bottom = -200;
+        this.dirLight.shadow.camera.left = -200;
+        this.dirLight.shadow.camera.right = 200;
+        this.dirLight.shadow.camera.near = 1;
+        this.dirLight.shadow.camera.far = 500;
+        
+        // High resolution shadow map
+        this.dirLight.shadow.mapSize.set(2048, 2048);
+        this.dirLight.shadow.bias = -0.0005;
+        
+        this.scene.add(this.dirLight);
 
         // Load Environment Map
         const rgbeLoader = new RGBELoader();
@@ -74,8 +87,37 @@ export default class SceneManager {
 
     render() {
         this.controls.update();
+        
+        // Update directional light to follow the car/target
+        if (this.dirLight) {
+            const offset = new THREE.Vector3(100, 200, 50);
+            this.dirLight.position.copy(this.controls.target).add(offset);
+            this.dirLight.target.position.copy(this.controls.target);
+            this.dirLight.target.updateMatrixWorld();
+        }
+
         this.renderer.render(this.scene, this.camera);
-        if (this.stats) this.stats.update();
+        
+        if (this.stats) {
+            this.stats.update();
+            
+            // Auto-hide stats if FPS is stable
+            const time = performance.now();
+            if (this.lastFrameTime) {
+                const dt = time - this.lastFrameTime;
+                if (!this.fpsHistory) this.fpsHistory = [];
+                this.fpsHistory.push(dt);
+                if (this.fpsHistory.length > 100) this.fpsHistory.shift();
+
+                if (this.fpsHistory.length === 100) {
+                    const isStable = this.fpsHistory.every(f => f < 18); // Stable ~60fps
+                    this.stats.dom.style.transition = 'opacity 0.5s';
+                    this.stats.dom.style.opacity = isStable ? '0' : '1';
+                    this.stats.dom.style.pointerEvents = isStable ? 'none' : 'auto';
+                }
+            }
+            this.lastFrameTime = time;
+        }
     }
 
     dispose() {

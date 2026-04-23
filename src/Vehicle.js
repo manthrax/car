@@ -54,26 +54,32 @@ export default class Vehicle {
     }
 
     init() {
-        bv0 = new Ammo.btVector3(0, 0, 0);
-        bv1 = new Ammo.btVector3(0, 0, 0);
-        bv2 = new Ammo.btVector3(0, 0, 0);
-        bv3 = new Ammo.btVector3(0, 0, 0);
+        if (!bv0) {
+            bv0 = new Ammo.btVector3(0, 0, 0);
+            bv1 = new Ammo.btVector3(0, 0, 0);
+            bv2 = new Ammo.btVector3(0, 0, 0);
+            bv3 = new Ammo.btVector3(0, 0, 0);
+        }
         // Physics Body - Compound Shape (2 Boxes)
-        const shape = new Ammo.btCompoundShape();
+        this.chassisShape = new Ammo.btCompoundShape();
 
         // 1. Lower Chassis Box
         const chassisBox = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * 0.5, this.chassisHeight * 0.5, this.chassisLength * 0.5));
+        this.subShapes = [chassisBox];
         const chassisTrans = new Ammo.btTransform();
         chassisTrans.setIdentity();
         chassisTrans.setOrigin(new Ammo.btVector3(0, 0, 0));
-        shape.addChildShape(chassisTrans, chassisBox);
-        //let shape = chassisBox;
+        this.chassisShape.addChildShape(chassisTrans, chassisBox);
+        Ammo.destroy(chassisTrans);
+
         // 2. Upper Cabin Box
         const cabinBox = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * 0.4, this.chassisHeight * 0.25, this.chassisLength * 0.25));
+        this.subShapes.push(cabinBox);
         const cabinTrans = new Ammo.btTransform();
         cabinTrans.setIdentity();
         cabinTrans.setOrigin(new Ammo.btVector3(0, this.chassisHeight * 1.7, -this.chassisLength * 0.05));
-        shape.addChildShape(cabinTrans, cabinBox);
+        this.chassisShape.addChildShape(cabinTrans, cabinBox);
+        Ammo.destroy(cabinTrans);
 
         const transform = new Ammo.btTransform();
         transform.setIdentity();
@@ -82,9 +88,9 @@ export default class Vehicle {
 
         const motionState = new Ammo.btDefaultMotionState(transform);
         const localInertia = new Ammo.btVector3(0, 0, 0);
-        shape.calculateLocalInertia(this.massVehicle, localInertia);
+        this.chassisShape.calculateLocalInertia(this.massVehicle, localInertia);
 
-        const rbInfo = new Ammo.btRigidBodyConstructionInfo(this.massVehicle, motionState, shape, localInertia);
+        const rbInfo = new Ammo.btRigidBodyConstructionInfo(this.massVehicle, motionState, this.chassisShape, localInertia);
         this.body = new Ammo.btRigidBody(rbInfo);
         this.body.setActivationState(4); // DISABLE_DEACTIVATION
         this.physics.addRigidBody(this.body);
@@ -92,9 +98,9 @@ export default class Vehicle {
         this.chassisMesh = this.createChassisMesh(this.chassisWidth, this.chassisHeight, this.chassisLength);
 
         // Raycast Vehicle
-        const tuning = new Ammo.btVehicleTuning();
+        this.tuning = new Ammo.btVehicleTuning();
         const rayCaster = new Ammo.btDefaultVehicleRaycaster(this.physics.world);
-        this.vehicle = new Ammo.btRaycastVehicle(tuning, this.body, rayCaster);
+        this.vehicle = new Ammo.btRaycastVehicle(this.tuning, this.body, rayCaster);
         this.vehicle.setCoordinateSystem(0, 1, 2);
         this.physics.addAction(this.vehicle);
 
@@ -102,13 +108,13 @@ export default class Vehicle {
         const wheelAxleCS = new Ammo.btVector3(-1, 0, 0);
 
         const addWheel = (isFront, pos, radius, width, index) => {
-            const wheelInfo = this.vehicle.addWheel(pos, wheelDirectionCS0, wheelAxleCS, this.suspensionRestLength, radius, tuning, isFront);
+            const wheelInfo = this.vehicle.addWheel(pos, wheelDirectionCS0, wheelAxleCS, this.suspensionRestLength, radius, this.tuning, isFront);
             wheelInfo.set_m_suspensionStiffness(this.suspensionStiffness);
             wheelInfo.set_m_wheelsDampingRelaxation(this.suspensionDamping);
             wheelInfo.set_m_wheelsDampingCompression(this.suspensionCompression);
             wheelInfo.set_m_frictionSlip(this.friction);
             wheelInfo.set_m_rollInfluence(this.rollInfluence);
-            this.wheelMeshes[index] = this.createWheelMesh(radius, width);
+            this.wheelMeshes[index] = this.createWheelMesh(radius, width, isFront);
         };
 
         addWheel(true, new Ammo.btVector3(this.wheelHalfTrackFront, this.wheelAxisHeightFront, this.wheelAxisFrontPosition), this.wheelRadiusFront, this.wheelWidthFront, 0);
@@ -117,10 +123,10 @@ export default class Vehicle {
         addWheel(false, new Ammo.btVector3(-this.wheelHalfTrackBack, this.wheelAxisHeightBack, this.wheelAxisPositionBack), this.wheelRadiusBack, this.wheelWidthBack, 3);
     }
 
-    createWheelMesh(radius, width) {
+    createWheelMesh(radius, width, isFront) {
         const materialInteractive = new THREE.MeshPhongMaterial({ color: 0x990000 });
         const geometry = new THREE.CylinderGeometry(radius, radius, width, 24, 1);
-        geometry.rotateZ(Math.PI / 2);
+        geometry.rotateZ(isFront ? -(Math.PI / 2) : (Math.PI / 2));
         const mesh = new THREE.Mesh(geometry, materialInteractive);
         mesh.add(new THREE.Mesh(new THREE.BoxGeometry(width * 1.5, radius * 1.75, radius * .25), materialInteractive));
         mesh.castShadow = true;
@@ -218,5 +224,30 @@ export default class Vehicle {
         this.vehicleSteering = 0;
         this.engineForce = 0;
         this.breakingForce = 0;
+    }
+
+    dispose() {
+        if (this.physics && this.physics.world) {
+            this.physics.world.removeAction(this.vehicle);
+            this.physics.world.removeRigidBody(this.body);
+        }
+
+        // Destroy Physics Objects
+        Ammo.destroy(this.vehicle);
+        Ammo.destroy(this.body);
+        Ammo.destroy(this.chassisShape);
+        //Ammo.destroy(this.tuning);
+
+        if (this.subShapes) {
+            this.subShapes.forEach(s => Ammo.destroy(s));
+        }
+
+        // Remove meshes from scene
+        if (this.chassisMesh) this.scene.remove(this.chassisMesh);
+        if (this.wheelMeshes) {
+            this.wheelMeshes.forEach(m => this.scene.remove(m));
+        }
+
+        console.log('Vehicle Disposed');
     }
 }

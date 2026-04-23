@@ -14,7 +14,7 @@ const v1 = new THREE.Vector3();
  */
 export function updateCameraFollow(camera, controls, targetMesh, physics, desiredDistance, localOffset = new THREE.Vector3(0, .7, 0)) {
     if (!camera || !controls || !targetMesh || !physics) return;
-
+    let offY = camera.position.y
     // 1. Sync controls target to targetMesh with local offset
     targetMesh.localToWorld(controls.target.copy(localOffset));
 
@@ -29,7 +29,8 @@ export function updateCameraFollow(camera, controls, targetMesh, physics, desire
     if (hits.length > 0) {
         // Pull camera in to hit point with a 5% buffer
         v1.copy(hits[0].hitPoint);
-        v0.copy(v1).sub(controls.target).multiplyScalar(0.95).add(controls.target);
+        v0.copy(v1).sub(controls.target).multiplyScalar(1.0).add(controls.target);
         camera.position.copy(v0);
     }
+    //if ((camera.position.y - controls.target.y) < offY) camera.position.y = controls.target.y + offY
 }

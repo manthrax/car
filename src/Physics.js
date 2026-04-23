@@ -21,10 +21,11 @@ export default class Physics {
     }
 
     update(deltaTime) {
-        this.world.stepSimulation(deltaTime, 10);
+        this.world && this.world.stepSimulation(deltaTime, 10);
     }
 
     raycast(from, to, records) {
+        if (!this.world) return;
         this.rayFrom.setValue(from.x, from.y, from.z);
         this.rayTo.setValue(to.x, to.y, to.z);
 
@@ -34,7 +35,7 @@ export default class Physics {
         if (rayCallback.hasHit()) {
             const hitPoint = rayCallback.get_m_hitPointWorld();
             const hitNormal = rayCallback.get_m_hitNormalWorld();
-            
+
             records.push({
                 hitPoint: { x: hitPoint.x(), y: hitPoint.y(), z: hitPoint.z() },
                 hitNormal: { x: hitNormal.x(), y: hitNormal.y(), z: hitNormal.z() },
@@ -54,14 +55,28 @@ export default class Physics {
     }
 
     dispose() {
-        // Cleanup Ammo objects
-        Ammo.destroy(this.world);
-        Ammo.destroy(this.solver);
-        Ammo.destroy(this.broadphase);
-        Ammo.destroy(this.dispatcher);
-        Ammo.destroy(this.collisionConfiguration);
+        // Cleanup Ammo objects with safety checks
+        if (this.world) {
+            Ammo.destroy(this.world);
+            this.world = null;
+        }
+        if (this.solver) {
+            Ammo.destroy(this.solver);
+            this.solver = null;
+        }
+        if (this.broadphase) {
+            Ammo.destroy(this.broadphase);
+            this.broadphase = null;
+        }
+        if (this.dispatcher) {
+            Ammo.destroy(this.dispatcher);
+            this.dispatcher = null;
+        }
+        if (this.collisionConfiguration) {
+            Ammo.destroy(this.collisionConfiguration);
+            this.collisionConfiguration = null;
+        }
         
-        this.world = null;
         console.log('Physics World Disposed');
     }
 }

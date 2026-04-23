@@ -7,6 +7,9 @@ export default class WorldManager {
         this.scene = scene;
         this.physics = physics;
         this.loader = new GLTFLoader();
+        this.bodies = [];
+        this.shapes = [];
+        this.meshes = [];
     }
 
     async loadWorld(path, onProgress) {
@@ -15,6 +18,7 @@ export default class WorldManager {
 
     async loadCar(path) {
         const gltf = await this.loader.loadAsync(path);
+        this.cleanupGltf(gltf.scene);
         const world = gltf.scene;
         const carBody = world.getObjectByName("Body");
         if (carBody) {
@@ -23,9 +27,21 @@ export default class WorldManager {
         }
         return carBody;
     }
+    cleanupGltf(model) {
+        let meshes = []
+        let baseMat = new THREE.MeshStandardMaterial();
+        model.traverse(e => e.isMesh && meshes.push(e))
+        meshes.forEach((m) => {
+            //m.material = baseMat;
+            m.castShadow = true
+            m.receiveShadow = true
+        })
+
+    }
 
     async loadTerrain(path, onProgress) {
         const gltf = await this.loader.loadAsync(path);
+        this.cleanupGltf(gltf.scene);
         const world = gltf.scene;
 
         world.scale.set(60, 60, 60);
@@ -133,6 +149,13 @@ export default class WorldManager {
             const rbInfo = new Ammo.btRigidBodyConstructionInfo(0, motionState, shape, new Ammo.btVector3(0, 0, 0));
             const body = new Ammo.btRigidBody(rbInfo);
             this.physics.addRigidBody(body);
+
+            this.meshes.push(ammoMesh);
+            this.shapes.push(shape);
+            this.bodies.push(body);
+
+            Ammo.destroy(transform);
+            Ammo.destroy(rbInfo);
         });
 
         Ammo.destroy(amV1);
@@ -144,5 +167,21 @@ export default class WorldManager {
 
         if (onProgress) onProgress(1.0);
         console.log(`Static terrain collision created: ${grid.size} grid cells.`);
+    }
+
+    dispose() {
+        this.bodies.forEach(body => {
+            if (this.physics && this.physics.world) {
+                this.physics.world.removeRigidBody(body);
+            }
+            Ammo.destroy(body);
+        });
+        this.shapes.forEach(shape => Ammo.destroy(shape));
+        this.meshes.forEach(mesh => Ammo.destroy(mesh));
+
+        this.bodies = [];
+        this.shapes = [];
+        this.meshes = [];
+        console.log('World Manager Disposed');
     }
 }
