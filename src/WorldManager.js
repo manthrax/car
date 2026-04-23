@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export default class WorldManager {
     constructor(scene, physics) {
@@ -12,7 +13,7 @@ export default class WorldManager {
         const gltf = await this.loader.loadAsync(path);
         const world = gltf.scene;
 
-        world.scale.set(40, 40, 40);
+        world.scale.set(60, 60, 60);
         world.position.y = -25;
         this.scene.add(world);
         world.updateMatrixWorld(true);
@@ -24,6 +25,7 @@ export default class WorldManager {
 
         const carBody = world.getObjectByName("Body");
         if (carBody) {
+            //carBody.scale.multiplyScalar(.5)
             carBody.updateMatrixWorld(true);
             this.scene.attach(carBody);
         }
@@ -31,9 +33,23 @@ export default class WorldManager {
         return { world, carBody };
     }
 
+    /*
+            const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries, true);
+            let pos = mergedGeometry.attributes.position.array;
+            let idx = mergedGeometry.index?.array;
+            if (idx && idx.length > 0) {
+                for (let i = 0; i < pos.length; i += 3) {
+                    let v = new Ammo.btVector3(pos[i], pos[i + 1], pos[i + 2]);
+                    ammoMesh.findOrAddVertex(v, false);
+                    Ammo.destroy(v);
+                }
+                for (let i = 0; i < idx.length; i++) ammoMesh.addIndex(idx[i]);
+    
+            }
+    */
     async createTerrainCollision(terrain, onProgress, trianglesPerStep = 1500) {
         terrain.updateMatrixWorld(true);
-        const geometries = [];
+        let geometries = [];
         terrain.traverse(child => {
             if (child.isMesh) {
                 const geom = child.geometry.clone();
@@ -44,8 +60,12 @@ export default class WorldManager {
 
         if (geometries.length === 0) return;
 
+        const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries, true);
+        geometries = [mergedGeometry];
+
         const ammoMesh = new Ammo.btTriangleMesh();
-        const areaThreshold = 0.5;
+
+        const areaThreshold = .5//2.5;
         const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3();
         const v1v2 = new THREE.Vector3(), v1v3 = new THREE.Vector3(), vCross = new THREE.Vector3();
 
@@ -58,7 +78,11 @@ export default class WorldManager {
         });
 
         let processedTriangles = 0;
+        let spawnPos = new THREE.Vector3(0, 4, -20);
 
+        const amV1 = new Ammo.btVector3();
+        const amV2 = new Ammo.btVector3();
+        const amV3 = new Ammo.btVector3();
         for (const geom of geometries) {
             const pos = geom.attributes.position.array;
             const index = geom.index ? geom.index.array : null;
@@ -67,19 +91,18 @@ export default class WorldManager {
                 va.set(x1, y1, z1);
                 vb.set(x2, y2, z2);
                 vc.set(x3, y3, z3);
+                //if (va.distanceTo(spawnPos) > 350)
+                //    return;
                 v1v2.subVectors(vb, va);
                 v1v3.subVectors(vc, va);
                 vCross.crossVectors(v1v2, v1v3);
                 const area = vCross.length() * 0.5;
 
                 if (area > areaThreshold) {
-                    const amV1 = new Ammo.btVector3(x1, y1, z1);
-                    const amV2 = new Ammo.btVector3(x2, y2, z2);
-                    const amV3 = new Ammo.btVector3(x3, y3, z3);
-                    ammoMesh.addTriangle(amV1, amV2, amV3, true);
-                    Ammo.destroy(amV1);
-                    Ammo.destroy(amV2);
-                    Ammo.destroy(amV3);
+                    amV1.setValue(x1, y1, z1);
+                    amV2.setValue(x2, y2, z2);
+                    amV3.setValue(x3, y3, z3);
+                    ammoMesh.addTriangle(amV1, amV2, amV3, false);
                 }
             };
 
@@ -104,6 +127,10 @@ export default class WorldManager {
             }
             geom.dispose();
         }
+
+        Ammo.destroy(amV1);
+        Ammo.destroy(amV2);
+        Ammo.destroy(amV3);
 
         if (onProgress) onProgress(1.0);
 

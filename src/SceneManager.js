@@ -18,7 +18,7 @@ export default class SceneManager {
         this.scene.background = new THREE.Color(0x0a0a0c);
 
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.2, 2000);
-        this.camera.position.set(-4.84, 4.39, -35.11);
+        this.camera.position.set(4, 4, 4);
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(window.devicePixelRatio);

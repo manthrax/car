@@ -1,28 +1,32 @@
 import * as THREE from 'three';
 
+let v0 = new THREE.Vector3();
+let v1 = new THREE.Vector3();
+let bv0, bv1, bv2, bv3;
+
 export default class Vehicle {
     constructor(physics, scene, pos, quat) {
         this.physics = physics;
         this.scene = scene;
-        this.pos = pos;
-        this.quat = quat;
+        this.initialPos = pos.clone();
+        this.initialQuat = quat.clone();
 
         // Vehicle constants (from Demo)
-        this.chassisWidth = 1.8;
+        this.chassisWidth = 1.5;
         this.chassisHeight = .6;
-        this.chassisLength = 4;
+        this.chassisLength = 4.5;
         this.massVehicle = 800;
 
-        this.wheelAxisPositionBack = -1;
-        this.wheelRadiusBack = .4;
+        this.wheelAxisPositionBack = -1.32;
+        this.wheelRadiusBack = .35;
         this.wheelWidthBack = .3;
-        this.wheelHalfTrackBack = 1;
+        this.wheelHalfTrackBack = .75;
         this.wheelAxisHeightBack = .3;
 
-        this.wheelAxisFrontPosition = 1.7;
-        this.wheelHalfTrackFront = 1;
+        this.wheelAxisFrontPosition = 1.5;
+        this.wheelHalfTrackFront = .75;
         this.wheelAxisHeightFront = .3;
-        this.wheelRadiusFront = .35;
+        this.wheelRadiusFront = .3;
         this.wheelWidthFront = .2;
 
         this.friction = 1000;
@@ -46,26 +50,29 @@ export default class Vehicle {
         this.vehicle = null;
         this.body = null;
 
-        this.init();
     }
 
     init() {
+        bv0 = new Ammo.btVector3(0, 0, 0);
+        bv1 = new Ammo.btVector3(0, 0, 0);
+        bv2 = new Ammo.btVector3(0, 0, 0);
+        bv3 = new Ammo.btVector3(0, 0, 0);
         // Physics Body
         const shape = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * .5, this.chassisHeight * .5, this.chassisLength * .5));
         const transform = new Ammo.btTransform();
         transform.setIdentity();
-        transform.setOrigin(new Ammo.btVector3(this.pos.x, this.pos.y, this.pos.z));
-        transform.setRotation(new Ammo.btQuaternion(this.quat.x, this.quat.y, this.quat.z, this.quat.w));
-        
+        transform.setOrigin(new Ammo.btVector3(this.initialPos.x, this.initialPos.y, this.initialPos.z));
+        transform.setRotation(new Ammo.btQuaternion(this.initialQuat.x, this.initialQuat.y, this.initialQuat.z, this.initialQuat.w));
+
         const motionState = new Ammo.btDefaultMotionState(transform);
         const localInertia = new Ammo.btVector3(0, 0, 0);
         shape.calculateLocalInertia(this.massVehicle, localInertia);
-        
+
         const rbInfo = new Ammo.btRigidBodyConstructionInfo(this.massVehicle, motionState, shape, localInertia);
         this.body = new Ammo.btRigidBody(rbInfo);
         this.body.setActivationState(4); // DISABLE_DEACTIVATION
         this.physics.addRigidBody(this.body);
-        
+
         this.chassisMesh = this.createChassisMesh(this.chassisWidth, this.chassisHeight, this.chassisLength);
 
         // Raycast Vehicle
@@ -116,7 +123,7 @@ export default class Vehicle {
 
     update(actions, camera, controls) {
         const speed = this.vehicle.getCurrentSpeedKmHour();
-        
+
         this.breakingForce = 0;
         this.engineForce = 0;
 
@@ -162,19 +169,43 @@ export default class Vehicle {
         const p = tm.getOrigin();
         const q = tm.getRotation();
 
+
+        let maxD = 15;
         if (camera && controls) {
-            camera.position.sub(controls.target);
-            controls.target.sub(this.chassisMesh.position);
+            //camera.position.sub(controls.target);
+            //controls.target.sub(roofTop);
+            maxD = camera.position.distanceTo(controls.target);
         }
 
         this.chassisMesh.position.set(p.x(), p.y(), p.z());
         this.chassisMesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
-
+        this.chassisMesh.updateMatrixWorld()
         if (camera && controls) {
-            controls.target.add(this.chassisMesh.position);
-            camera.position.add(controls.target);
+            this.chassisMesh.localToWorld(controls.target.set(0, 1, 0));
+
+            //camera.position.add(controls.target);
+            let d = camera.position.distanceTo(controls.target)
+            if (d > maxD) {
+                v0.copy(camera.position).sub(controls.target).setLength(maxD).add(controls.target);
+                camera.position.lerp(v0, 1.);//if lesss that 1, the camera will drift away
+            }
         }
 
         return speed;
+    }
+
+    reset() {
+        const transform = new Ammo.btTransform();
+        transform.setIdentity();
+        transform.setOrigin(new Ammo.btVector3(this.initialPos.x, this.initialPos.y, this.initialPos.z));
+        transform.setRotation(new Ammo.btQuaternion(this.initialQuat.x, this.initialQuat.y, this.initialQuat.z, this.initialQuat.w));
+
+        this.body.setWorldTransform(transform);
+        this.body.setLinearVelocity(new Ammo.btVector3(0, 0, 0));
+        this.body.setAngularVelocity(new Ammo.btVector3(0, 0, 0));
+
+        this.vehicleSteering = 0;
+        this.engineForce = 0;
+        this.breakingForce = 0;
     }
 }
