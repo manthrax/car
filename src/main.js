@@ -153,10 +153,10 @@ async function startApp() {
         } else {
             // Procedural fallback
             for (let i = 0; i < 50 && spawns.length < 5; i++) {
-                const rx = (Math.random() - 0.5) * 400;
-                const rz = (Math.random() - 0.5) * 400;
+                const rx = (Math.random() - 0.5) * 1000;
+                const rz = (Math.random() - 0.5) * 1000;
                 const hits = [];
-                physics.raycast({ x: rx, y: 500, z: rz }, { x: rx, y: -500, z: rz }, hits);
+                physics.raycast({ x: rx, y: 1000, z: rz }, { x: rx, y: -1000, z: rz }, hits);
                 if (hits.length > 0 && hits[0].hitNormal.y > 0.8) {
                     const s = new THREE.Object3D();
                     s.position.set(hits[0].hitPoint.x, hits[0].hitPoint.y + 2, hits[0].hitPoint.z);
