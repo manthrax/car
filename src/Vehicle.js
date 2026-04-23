@@ -93,7 +93,7 @@ export default class Vehicle {
         const rbInfo = new Ammo.btRigidBodyConstructionInfo(this.massVehicle, motionState, this.chassisShape, localInertia);
         this.body = new Ammo.btRigidBody(rbInfo);
         this.body.setActivationState(4); // DISABLE_DEACTIVATION
-        this.physics.addRigidBody(this.body);
+        this.physics.addRigidBody(this.body, 2, -1); // Group 2, Collides with everything
 
         this.chassisMesh = this.createChassisMesh(this.chassisWidth, this.chassisHeight, this.chassisLength);
 
@@ -205,9 +205,19 @@ export default class Vehicle {
 
     applyFlipForce() {
         if (!this.body) return;
-        // Apply an upward force to the top of the car to help flip it
-        bv0.setValue(0, this.massVehicle * 15, 0); // Force vector
-        bv1.setValue(0, 1.5, 0); // Relative position (roof)
+        
+        // Get current transform and rotation basis
+        const transform = this.body.getWorldTransform();
+        const basis = transform.getBasis();
+        
+        // Extract the local Y-axis (Row 1) which represents the 'up' direction of the car
+        const up = basis.getRow(1);
+        
+        // Calculate the world-space offset of the roof: local Up axis * 1.5 units
+        bv1.setValue(up.x() * 1.5, up.y() * 1.5, up.z() * 1.5);
+        
+        // Apply a global upward force at that roof position
+        bv0.setValue(0, this.massVehicle * 15, 0); 
         this.body.applyForce(bv0, bv1);
     }
 

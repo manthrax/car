@@ -24,7 +24,7 @@ export function updateCameraFollow(camera, controls, targetMesh, physics, desire
 
     // 3. Perform raycast from target to camera to prevent clipping
     const hits = [];
-    physics.raycast(controls.target, camera.position, hits);
+    physics.raycast(controls.target, camera.position, hits, 1); // Only hit Group 1 (Terrain)
 
     if (hits.length > 0) {
         // Pull camera in to hit point with a 5% buffer

@@ -24,30 +24,32 @@ export default class Physics {
         this.world && this.world.stepSimulation(deltaTime, 10);
     }
 
-    raycast(from, to, records) {
+    raycast(from, to, records, mask = -1) {
         if (!this.world) return;
         this.rayFrom.setValue(from.x, from.y, from.z);
         this.rayTo.setValue(to.x, to.y, to.z);
-
+        
         const rayCallback = new Ammo.ClosestRayResultCallback(this.rayFrom, this.rayTo);
+        rayCallback.set_m_collisionFilterMask(mask);
+        
         this.world.rayTest(this.rayFrom, this.rayTo, rayCallback);
-
+        
         if (rayCallback.hasHit()) {
             const hitPoint = rayCallback.get_m_hitPointWorld();
             const hitNormal = rayCallback.get_m_hitNormalWorld();
-
+            
             records.push({
                 hitPoint: { x: hitPoint.x(), y: hitPoint.y(), z: hitPoint.z() },
                 hitNormal: { x: hitNormal.x(), y: hitNormal.y(), z: hitNormal.z() },
                 body: Ammo.castObject(rayCallback.get_m_collisionObject(), Ammo.btRigidBody)
             });
         }
-
+        
         Ammo.destroy(rayCallback);
     }
 
-    addRigidBody(body) {
-        this.world.addRigidBody(body);
+    addRigidBody(body, group = 1, mask = -1) {
+        this.world.addRigidBody(body, group, mask);
     }
 
     addAction(action) {
