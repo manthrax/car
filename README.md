@@ -1,5 +1,7 @@
 # Antigravity Racing - Technical Physics Simulation
 
+**[Live Demo](https://manthrax.github.io/car/)**
+
 A Three.js and Ammo.js based vehicle dynamics simulation focusing on high-fidelity raycast vehicle implementation and optimized terrain collision.
 
 ## Technical Architecture
