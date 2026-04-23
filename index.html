@@ -5,41 +5,235 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;700&display=swap');
+
         body {
             color: #ffffff;
             font-family: 'Inter', system-ui, sans-serif;
             margin: 0px;
             overflow: hidden;
-            background-color: #0a0a0c;
+            background-color: #050507;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #ui-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* Align to left for a more modern 'HUD' look */
+            padding-left: 10%;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #menu-container {
+            width: 450px;
+            text-align: left;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            letter-spacing: -2px;
+            margin-bottom: 3rem;
+            font-weight: 200; /* Super light font as requested */
+            line-height: 1;
+        }
+
+        h1 .accent {
+            font-weight: 700;
+            color: #ffffff;
+            opacity: 0.3;
+        }
+
+        .selection-group {
+            margin-bottom: 2.5rem;
+        }
+
+        h3 {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 3px;
+            margin-bottom: 1.5rem;
+            font-weight: 400;
+            text-transform: uppercase;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option {
+            background: transparent;
+            border: none;
+            padding: 0.5rem 0;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 300;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+        }
+
+        .option::before {
+            content: '';
+            width: 0;
+            height: 1px;
+            background: #ffffff;
+            margin-right: 0;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .option:hover {
+            color: rgba(255, 255, 255, 1);
+            transform: translateX(10px);
+        }
+
+        .option.selected {
+            color: #ffffff;
+            font-weight: 400;
+            transform: translateX(20px);
+        }
+
+        .option.selected::before {
+            width: 30px;
+            margin-right: 15px;
+            opacity: 1;
+        }
+
+        #start-btn {
+            background: transparent;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+            text-transform: uppercase;
+        }
+
+        #start-btn:hover {
+            background: #ffffff;
+            color: #000;
+            border-color: #ffffff;
+        }
+
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .loader-content {
+            width: 200px;
+            text-align: center;
+        }
+
+        #loading-text {
+            font-size: 0.6rem;
+            letter-spacing: 4px;
+            margin-bottom: 2rem;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+        }
+
+        #loading-bar-container {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #loading-bar {
+            height: 100%;
+            width: 0%;
+            background: #ffffff;
+            transition: width 0.2s ease;
         }
 
         #speedometer {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            font-size: 2rem;
-            font-weight: 800;
-            color: #00f2ff;
-            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+            bottom: 60px;
+            right: 60px;
+            font-size: 4rem;
+            font-weight: 200;
+            color: #ffffff;
+            letter-spacing: -2px;
+            display: none;
+        }
+
+        #speedometer span {
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+            opacity: 0.3;
+            margin-left: 10px;
+            vertical-align: middle;
         }
 
         #info {
             position: absolute;
-            top: 20px;
-            width: 100%;
+            bottom: 60px;
+            left: 60px;
             pointer-events: none;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.2);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 0.8rem;
+            letter-spacing: 2px;
+            font-size: 0.6rem;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div id="container"></div>
+    <div id="ui-overlay">
+        <div id="menu-container">
+            <h1>ANTIGRAVITY <span class="accent">RACING</span></h1>
+            
+            <div class="selection-group">
+                <h3>SELECT TRACK</h3>
+                <div class="options" id="map-options">
+                    <div class="option selected" data-value="world.glb">DESERT OUTPOST</div>
+                    <div class="option" data-value="drift_racetrack_free_world2.glb">DRIFT VALLEY</div>
+                    <div class="option" data-value="city5.glb">CITY CIRCUIT</div>
+                    <div class="option" data-value="world2.glb">ALPINE PASS</div>
+                </div>
+            </div>
+
+            <div class="selection-group">
+                <h3>SELECT VEHICLE</h3>
+                <div class="options" id="car-options">
+                    <div class="option selected" data-value="car.glb">CLASSIC MUSCLE</div>
+                    <div class="option" data-value="car_mazda.glb">MX5 TUNER</div>
+                </div>
+            </div>
+
+            <button id="start-btn">START SIMULATION</button>
+        </div>
+    </div>
+
+    <div id="loading-overlay" style="display: none;">
+        <div class="loader-content">
+            <div class="spinner"></div>
+            <div id="loading-text">GENERATING COLLISION MESH...</div>
+            <div id="loading-bar-container">
+                <div id="loading-bar"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="speedometer">0.0 km/h</div>
-    <div id="info">Ammo.js Raycast vehicle demo<br>Press W,A,S,D to move.</div>
+    <div id="info">Press W,A,S,D to move. Press R to respawn.</div>
 
     <!-- Ammo.js WASM Loader -->
     <script src="ammo/ammo.wasm.js"></script>

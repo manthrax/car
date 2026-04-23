@@ -1,7 +1,6 @@
 import * as THREE from 'three';
+import { updateCameraFollow } from './CameraFollow.js';
 
-let v0 = new THREE.Vector3();
-let v1 = new THREE.Vector3();
 let bv0, bv1, bv2, bv3;
 
 export default class Vehicle {
@@ -51,6 +50,7 @@ export default class Vehicle {
         this.vehicle = null;
         this.body = null;
 
+        this.cameraLocalOffset = new THREE.Vector3(0, 1., 0);
     }
 
     init() {
@@ -58,8 +58,23 @@ export default class Vehicle {
         bv1 = new Ammo.btVector3(0, 0, 0);
         bv2 = new Ammo.btVector3(0, 0, 0);
         bv3 = new Ammo.btVector3(0, 0, 0);
-        // Physics Body
-        const shape = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * .5, this.chassisHeight * .5, this.chassisLength * .5));
+        // Physics Body - Compound Shape (2 Boxes)
+        const shape = new Ammo.btCompoundShape();
+
+        // 1. Lower Chassis Box
+        const chassisBox = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * 0.5, this.chassisHeight * 0.5, this.chassisLength * 0.5));
+        const chassisTrans = new Ammo.btTransform();
+        chassisTrans.setIdentity();
+        chassisTrans.setOrigin(new Ammo.btVector3(0, 0, 0));
+        shape.addChildShape(chassisTrans, chassisBox);
+        //let shape = chassisBox;
+        // 2. Upper Cabin Box
+        const cabinBox = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * 0.4, this.chassisHeight * 0.25, this.chassisLength * 0.25));
+        const cabinTrans = new Ammo.btTransform();
+        cabinTrans.setIdentity();
+        cabinTrans.setOrigin(new Ammo.btVector3(0, this.chassisHeight * 1.5, -this.chassisLength * 0.05));
+        shape.addChildShape(cabinTrans, cabinBox);
+
         const transform = new Ammo.btTransform();
         transform.setIdentity();
         transform.setOrigin(new Ammo.btVector3(this.initialPos.x, this.initialPos.y, this.initialPos.z));
@@ -122,7 +137,7 @@ export default class Vehicle {
         return mesh;
     }
 
-    update(actions, camera, controls) {
+    update(actions, camera, controls, desiredDistance) {
         const speed = this.vehicle.getCurrentSpeedKmHour();
 
         this.breakingForce = 0;
@@ -157,7 +172,7 @@ export default class Vehicle {
 
         // Sync Wheels
         for (let i = 0; i < this.vehicle.getNumWheels(); i++) {
-            this.vehicle.updateWheelTransform(i, true);
+            this.vehicle.updateWheelTransformsWS(i, true);
             const tm = this.vehicle.getWheelTransformWS(i);
             const p = tm.getOrigin();
             const q = tm.getRotation();
@@ -165,31 +180,18 @@ export default class Vehicle {
             this.wheelMeshes[i].quaternion.set(q.x(), q.y(), q.z(), q.w());
         }
 
-        // Sync Chassis & Camera Follow
+        // Sync Chassis
         const tm = this.vehicle.getChassisWorldTransform();
         const p = tm.getOrigin();
         const q = tm.getRotation();
 
-
-        let maxD = 15;
-        if (camera && controls) {
-            //camera.position.sub(controls.target);
-            //controls.target.sub(roofTop);
-            maxD = camera.position.distanceTo(controls.target);
-        }
-
         this.chassisMesh.position.set(p.x(), p.y(), p.z());
         this.chassisMesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
-        this.chassisMesh.updateMatrixWorld()
-        if (camera && controls) {
-            this.chassisMesh.localToWorld(controls.target.set(0, 1, 0));
+        this.chassisMesh.updateMatrixWorld();
 
-            //camera.position.add(controls.target);
-            let d = camera.position.distanceTo(controls.target)
-            if (d > maxD) {
-                v0.copy(camera.position).sub(controls.target).setLength(maxD).add(controls.target);
-                camera.position.lerp(v0, 1.);//if lesss that 1, the camera will drift away
-            }
+        // Use extracted utility for camera follow and collision
+        if (camera && controls) {
+            updateCameraFollow(camera, controls, this.chassisMesh, this.physics, desiredDistance, this.cameraLocalOffset);
         }
 
         return speed;

@@ -27,6 +27,15 @@ export default class SceneManager {
         this.container.appendChild(this.renderer.domElement);
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.minDistance = .25;
+        this.controls.maxDistance = 200;
+        this.controls.enableZoom = false; // Disable default zoom
+
+        this.desiredDistance = 15;
+        window.addEventListener('wheel', (e) => {
+            this.desiredDistance += e.deltaY * 0.01;
+            this.desiredDistance = Math.max(this.controls.minDistance, Math.min(this.controls.maxDistance, this.desiredDistance));
+        }, { passive: false });
 
         const ambientLight = new THREE.AmbientLight(0x404040);
         this.scene.add(ambientLight);
@@ -66,6 +75,28 @@ export default class SceneManager {
     render() {
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
-        this.stats.update();
+        if (this.stats) this.stats.update();
+    }
+
+    dispose() {
+        this.renderer.dispose();
+        if (this.container && this.renderer.domElement) {
+            this.container.removeChild(this.renderer.domElement);
+        }
+        if (this.stats && this.stats.dom) {
+            this.stats.dom.remove();
+        }
+        // Basic scene cleanup
+        this.scene.traverse(object => {
+            if (object.geometry) object.geometry.dispose();
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(m => m.dispose());
+                } else {
+                    object.material.dispose();
+                }
+            }
+        });
+        console.log('Scene Manager Disposed');
     }
 }
