@@ -204,12 +204,21 @@ async function startApp() {
                 if (isRight)
                     mesh.geometry.rotateY(Math.PI / 2);
             } else {
+                let rtn = new THREE.Group();
+                rtn.add(mesh);
+                sceneManager.scene.add(rtn);
                 if (isRight) {
-                    mesh.children[0].rotation.x = Math.PI;
+                    //mesh.position.x -= 2;
                 }
+                mesh.rotation.y = Math.PI;// * .5;
+                if (isRight) {
+                    mesh.rotation.z = Math.PI;
+                }
+                mesh.quaternion.setFromEuler(mesh.rotation);
+                return rtn;
             }
-            sceneManager.scene.add(mesh);
 
+            sceneManager.scene.add(mesh);
             return mesh;
 
         };

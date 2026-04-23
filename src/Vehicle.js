@@ -114,7 +114,7 @@ export default class Vehicle {
             wheelInfo.set_m_wheelsDampingCompression(this.suspensionCompression);
             wheelInfo.set_m_frictionSlip(this.friction);
             wheelInfo.set_m_rollInfluence(this.rollInfluence);
-            const isRight = pos.x > 0;
+            const isRight = pos.x() > 0;
             this.wheelMeshes[index] = this.createWheelMesh(radius, width, isFront, isRight);
         };
 
