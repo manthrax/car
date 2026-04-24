@@ -44,10 +44,19 @@ export default class WorldManager {
         this.cleanupGltf(gltf.scene);
         const world = gltf.scene;
 
+
+
+
         world.scale.set(60, 60, 60);
         world.position.y = -25;
         this.scene.add(world);
         world.updateMatrixWorld(true);
+        // 6. Setup Vehicle at Spawn Point
+
+        this.spawns = [];
+        world.traverse(e => e.name.startsWith("Spawn") && this.spawns.push(e));
+        this.spawns.forEach(s => this.scene.attach(s));
+        this.spawns.forEach(s => s.removeFromParent());
 
         const terrain = world;
         if (terrain) {

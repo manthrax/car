@@ -4,52 +4,53 @@ import { updateCameraFollow } from './CameraFollow.js';
 let bv0, bv1, bv2, bv3;
 
 export default class Vehicle {
-    constructor(physics, scene, pos, quat) {
+    constructor(physics, scene, pos, quat, options = {}) {
         this.physics = physics;
         this.scene = scene;
         this.initialPos = pos.clone();
         this.initialPos.y += 1;
         this.initialQuat = quat.clone();
 
-        // Vehicle constants (from Demo)
-        this.chassisWidth = 1.5;
-        this.chassisHeight = .6;
-        this.chassisLength = 4.5;
-        this.massVehicle = 800;
+        // Default Config
+        const defaults = {
+            mass: 800,
+            chassis: [
+                { size: [1.5, 0.6, 4.5], pos: [0, 0, 0] }, // Lower Chassis
+                { size: [1.2, 0.3, 2.2], pos: [0, 1.0, -0.2] } // Cabin
+            ],
+            wheels: {
+                radiusBack: 0.35, widthBack: 0.3, halfTrackBack: 0.75, axisPositionBack: -1.32, axisHeightBack: 0.3,
+                radiusFront: 0.3, widthFront: 0.2, halfTrackFront: 0.75, axisPositionFront: 1.5, axisHeightFront: 0.3
+            },
+            tuning: {
+                frictionSlip: 1000.0,
+                chassisFriction: 0.1,
+                suspensionStiffness: 20.0,
+                suspensionDampingRelaxation: 2.3,
+                suspensionDampingCompression: 4.4,
+                suspensionRestLength: 0.6,
+                rollInfluence: 0.2,
+                steeringIncrement: .01,
+                steeringClamp: .5,
+                maxEngineForce: 2000,
+                maxBreakingForce: 100
+            }
+        };
 
-        this.wheelAxisPositionBack = -1.32;
-        this.wheelRadiusBack = .35;
-        this.wheelWidthBack = .3;
-        this.wheelHalfTrackBack = .75;
-        this.wheelAxisHeightBack = .3;
+        // Deep merge or manual apply
+        this.config = { ...defaults, ...options };
+        this.config.wheels = { ...defaults.wheels, ...(options.wheels || {}) };
+        this.config.tuning = { ...defaults.tuning, ...(options.tuning || {}) };
 
-        this.wheelAxisFrontPosition = 1.5;
-        this.wheelHalfTrackFront = .75;
-        this.wheelAxisHeightFront = .3;
-        this.wheelRadiusFront = .3;
-        this.wheelWidthFront = .2;
-
-        this.friction = 1000;
-        this.suspensionStiffness = 20.0;
-        this.suspensionDamping = 2.3;
-        this.suspensionCompression = 4.4;
-        this.suspensionRestLength = 0.6;
-        this.rollInfluence = 0.2;
-
-        this.steeringIncrement = .01;
-        this.steeringClamp = .5;
-        this.maxEngineForce = 2000;
-        this.maxBreakingForce = 100;
-
-        this.engineForce = 0;
-        this.vehicleSteering = 0;
-        this.breakingForce = 0;
+        // Flatten essential config to instance properties
+        this.massVehicle = this.config.mass;
+        Object.assign(this, this.config.wheels);
+        Object.assign(this, this.config.tuning);
 
         this.wheelMeshes = [];
         this.chassisMesh = null;
         this.vehicle = null;
         this.body = null;
-
         this.cameraLocalOffset = new THREE.Vector3(0, 1., 0);
     }
 
@@ -60,26 +61,21 @@ export default class Vehicle {
             bv2 = new Ammo.btVector3(0, 0, 0);
             bv3 = new Ammo.btVector3(0, 0, 0);
         }
-        // Physics Body - Compound Shape (2 Boxes)
+        // Physics Body - Compound Shape (Driven by config)
         this.chassisShape = new Ammo.btCompoundShape();
+        this.subShapes = [];
 
-        // 1. Lower Chassis Box
-        const chassisBox = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * 0.5, this.chassisHeight * 0.5, this.chassisLength * 0.5));
-        this.subShapes = [chassisBox];
-        const chassisTrans = new Ammo.btTransform();
-        chassisTrans.setIdentity();
-        chassisTrans.setOrigin(new Ammo.btVector3(0, 0, 0));
-        this.chassisShape.addChildShape(chassisTrans, chassisBox);
-        Ammo.destroy(chassisTrans);
+        this.config.chassis.forEach(box => {
+            const shape = new Ammo.btBoxShape(new Ammo.btVector3(box.size[0] * 0.5, box.size[1] * 0.5, box.size[2] * 0.5));
+            this.subShapes.push(shape);
 
-        // 2. Upper Cabin Box
-        const cabinBox = new Ammo.btBoxShape(new Ammo.btVector3(this.chassisWidth * 0.4, this.chassisHeight * 0.25, this.chassisLength * 0.25));
-        this.subShapes.push(cabinBox);
-        const cabinTrans = new Ammo.btTransform();
-        cabinTrans.setIdentity();
-        cabinTrans.setOrigin(new Ammo.btVector3(0, this.chassisHeight * 1.7, -this.chassisLength * 0.05));
-        this.chassisShape.addChildShape(cabinTrans, cabinBox);
-        Ammo.destroy(cabinTrans);
+            const trans = new Ammo.btTransform();
+            trans.setIdentity();
+            trans.setOrigin(new Ammo.btVector3(box.pos[0], box.pos[1], box.pos[2]));
+
+            this.chassisShape.addChildShape(trans, shape);
+            Ammo.destroy(trans);
+        });
 
         const transform = new Ammo.btTransform();
         transform.setIdentity();
@@ -92,6 +88,7 @@ export default class Vehicle {
 
         const rbInfo = new Ammo.btRigidBodyConstructionInfo(this.massVehicle, motionState, this.chassisShape, localInertia);
         this.body = new Ammo.btRigidBody(rbInfo);
+        this.body.setFriction(this.config.tuning.chassisFriction || 0.1);
         this.body.setActivationState(4); // DISABLE_DEACTIVATION
         this.physics.addRigidBody(this.body, 2, -1); // Group 2, Collides with everything
 
@@ -99,6 +96,25 @@ export default class Vehicle {
 
         // Raycast Vehicle
         this.tuning = new Ammo.btVehicleTuning();
+
+        // Capture baseline Ammo.js tuning defaults for reference
+        this.ammoTuningDefaults = {
+            frictionSlip: this.tuning.get_m_frictionSlip(),
+            suspensionStiffness: this.tuning.get_m_suspensionStiffness(),
+            suspensionDamping: this.tuning.get_m_suspensionDamping(),
+            suspensionCompression: this.tuning.get_m_suspensionCompression(),
+            maxSuspensionTravelCm: this.tuning.get_m_maxSuspensionTravelCm(),
+            maxSuspensionForce: this.tuning.get_m_maxSuspensionForce()
+        };
+        console.log("Ammo.js btVehicleTuning Defaults:", this.ammoTuningDefaults);
+
+        // Apply config to the global tuning object
+        if (this.config.tuning.frictionSlip !== undefined) this.tuning.set_m_frictionSlip(this.config.tuning.frictionSlip);
+        if (this.config.tuning.suspensionStiffness !== undefined) this.tuning.set_m_suspensionStiffness(this.config.tuning.suspensionStiffness);
+        if (this.config.tuning.suspensionDampingRelaxation !== undefined) this.tuning.set_m_suspensionDamping(this.config.tuning.suspensionDampingRelaxation);
+        if (this.config.tuning.suspensionDampingCompression !== undefined) this.tuning.set_m_suspensionCompression(this.config.tuning.suspensionDampingCompression);
+        if (this.config.tuning.maxSuspensionTravelCm !== undefined) this.tuning.set_m_maxSuspensionTravelCm(this.config.tuning.maxSuspensionTravelCm);
+        if (this.config.tuning.maxSuspensionForce !== undefined) this.tuning.set_m_maxSuspensionForce(this.config.tuning.maxSuspensionForce);
         const rayCaster = new Ammo.btDefaultVehicleRaycaster(this.physics.world);
         this.vehicle = new Ammo.btRaycastVehicle(this.tuning, this.body, rayCaster);
         this.vehicle.setCoordinateSystem(0, 1, 2);
@@ -108,20 +124,50 @@ export default class Vehicle {
         const wheelAxleCS = new Ammo.btVector3(-1, 0, 0);
 
         const addWheel = (isFront, pos, radius, width, index) => {
-            const wheelInfo = this.vehicle.addWheel(pos, wheelDirectionCS0, wheelAxleCS, this.suspensionRestLength, radius, this.tuning, isFront);
-            wheelInfo.set_m_suspensionStiffness(this.suspensionStiffness);
-            wheelInfo.set_m_wheelsDampingRelaxation(this.suspensionDamping);
-            wheelInfo.set_m_wheelsDampingCompression(this.suspensionCompression);
-            wheelInfo.set_m_frictionSlip(this.friction);
-            wheelInfo.set_m_rollInfluence(this.rollInfluence);
+            const wheelInfo = this.vehicle.addWheel(pos, wheelDirectionCS0, wheelAxleCS, this.config.tuning.suspensionRestLength, radius, this.tuning, isFront);
+
+            // Lazy-capture Ammo.js defaults from the very first wheel
+            if (!this.ammoWheelDefaults) {
+                this.ammoWheelDefaults = {
+                    suspensionStiffness: wheelInfo.get_m_suspensionStiffness(),
+                    suspensionDampingRelaxation: wheelInfo.get_m_wheelsDampingRelaxation(),
+                    suspensionDampingCompression: wheelInfo.get_m_wheelsDampingCompression(),
+                    frictionSlip: wheelInfo.get_m_frictionSlip(),
+                    rollInfluence: wheelInfo.get_m_rollInfluence()
+                };
+                console.log("Captured Ammo.js Wheel Defaults:", this.ammoWheelDefaults);
+            }
+
+            // Map config keys to Ammo setter methods
+            const tuningMap = {
+                suspensionStiffness: 'set_m_suspensionStiffness',
+                suspensionDampingRelaxation: 'set_m_wheelsDampingRelaxation',
+                suspensionDampingCompression: 'set_m_wheelsDampingCompression',
+                frictionSlip: 'set_m_frictionSlip',
+                rollInfluence: 'set_m_rollInfluence',
+                maxSuspensionTravelCm: 'set_m_maxSuspensionTravelCm',
+                maxSuspensionForce: 'set_m_maxSuspensionForce'
+            };
+
+            // Apply overrides only if they differ from the engine defaults
+            Object.keys(tuningMap).forEach(key => {
+                const userVal = this.config.tuning[key];
+                const ammoDefault = this.ammoWheelDefaults[key];
+                const setter = tuningMap[key];
+
+                if (userVal !== undefined && userVal !== ammoDefault) {
+                    wheelInfo[setter](userVal);
+                }
+            });
+
             const isRight = pos.x() > 0;
             this.wheelMeshes[index] = this.createWheelMesh(radius, width, isFront, isRight);
         };
 
-        addWheel(true, new Ammo.btVector3(this.wheelHalfTrackFront, this.wheelAxisHeightFront, this.wheelAxisFrontPosition), this.wheelRadiusFront, this.wheelWidthFront, 0);
-        addWheel(true, new Ammo.btVector3(-this.wheelHalfTrackFront, this.wheelAxisHeightFront, this.wheelAxisFrontPosition), this.wheelRadiusFront, this.wheelWidthFront, 1);
-        addWheel(false, new Ammo.btVector3(this.wheelHalfTrackBack, this.wheelAxisHeightBack, this.wheelAxisPositionBack), this.wheelRadiusBack, this.wheelWidthBack, 2);
-        addWheel(false, new Ammo.btVector3(-this.wheelHalfTrackBack, this.wheelAxisHeightBack, this.wheelAxisPositionBack), this.wheelRadiusBack, this.wheelWidthBack, 3);
+        addWheel(true, new Ammo.btVector3(this.halfTrackFront, this.axisHeightFront, this.axisPositionFront), this.radiusFront, this.widthFront, 0);
+        addWheel(true, new Ammo.btVector3(-this.halfTrackFront, this.axisHeightFront, this.axisPositionFront), this.radiusFront, this.widthFront, 1);
+        addWheel(false, new Ammo.btVector3(this.halfTrackBack, this.axisHeightBack, this.axisPositionBack), this.radiusBack, this.widthBack, 2);
+        addWheel(false, new Ammo.btVector3(-this.halfTrackBack, this.axisHeightBack, this.axisPositionBack), this.radiusBack, this.widthBack, 3);
     }
 
     createWheelMesh(radius, width, isFront, isRight) {
@@ -151,12 +197,20 @@ export default class Vehicle {
         this.engineForce = 0;
 
         if (actions.acceleration) {
-            if (speed < -1) this.breakingForce = this.maxBreakingForce;
-            else this.engineForce = this.maxEngineForce;
-        }
-        if (actions.braking) {
-            if (speed > 1) this.breakingForce = this.maxBreakingForce;
-            else this.engineForce = -this.maxEngineForce / 2;
+            if (speed < -1) {
+                this.breakingForce = this.maxBreakingForce || 100;
+            } else {
+                this.engineForce = this.maxEngineForce;
+            }
+        } else if (actions.braking) {
+            if (speed > 1) {
+                this.breakingForce = this.maxBreakingForce || 100;
+            } else {
+                this.engineForce = -this.maxEngineForce / 2;
+            }
+        } else {
+            // Apply slight rolling resistance/brake when no keys are pressed
+            this.breakingForce = (this.maxBreakingForce || 100) * 0.05;
         }
         if (actions.left) {
             if (this.vehicleSteering < this.steeringClamp) this.vehicleSteering += this.steeringIncrement;
@@ -215,7 +269,7 @@ export default class Vehicle {
         const up = basis.getRow(1);
 
         // Calculate the world-space offset of the roof: local Up axis * 1.5 units
-        bv1.setValue(up.x() * 1.5, up.y() * 1.5, up.z() * 1.5);
+        bv1.setValue(up.x(), up.y() * 1.5, up.z());
 
         // Apply a global upward force at that roof position
         bv0.setValue(0, this.massVehicle * 15, 0);
@@ -231,10 +285,41 @@ export default class Vehicle {
         this.body.setWorldTransform(transform);
         this.body.setLinearVelocity(new Ammo.btVector3(0, 0, 0));
         this.body.setAngularVelocity(new Ammo.btVector3(0, 0, 0));
+        Ammo.destroy(transform);
 
         this.vehicleSteering = 0;
         this.engineForce = 0;
         this.breakingForce = 0;
+    }
+
+    getPhysicsState() {
+        if (!this.body) return null;
+        const transform = this.body.getWorldTransform();
+        const origin = transform.getOrigin();
+        const rotation = transform.getRotation();
+        const lv = this.body.getLinearVelocity();
+        const av = this.body.getAngularVelocity();
+
+        return {
+            pos: { x: origin.x(), y: origin.y(), z: origin.z() },
+            quat: { x: rotation.x(), y: rotation.y(), z: rotation.z(), w: rotation.w() },
+            lv: { x: lv.x(), y: lv.y(), z: lv.z() },
+            av: { x: av.x(), y: av.y(), z: av.z() }
+        };
+    }
+
+    setPhysicsState(state) {
+        if (!this.body || !state) return;
+        const transform = new Ammo.btTransform();
+        transform.setIdentity();
+        transform.setOrigin(new Ammo.btVector3(state.pos.x, state.pos.y, state.pos.z));
+        transform.setRotation(new Ammo.btQuaternion(state.quat.x, state.quat.y, state.quat.z, state.quat.w));
+
+        this.body.setWorldTransform(transform);
+        this.body.setLinearVelocity(new Ammo.btVector3(state.lv.x, state.lv.y, state.lv.z));
+        this.body.setAngularVelocity(new Ammo.btVector3(state.av.x, state.av.y, state.av.z));
+        this.body.activate();
+        Ammo.destroy(transform);
     }
 
     dispose() {

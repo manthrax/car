@@ -196,6 +196,39 @@
             font-size: 0.6rem;
             display: none;
         }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+            text-transform: uppercase;
+        }
+
+        .checkbox-option:hover {
+            color: #ffffff;
+        }
+
+        .checkbox-option input {
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            outline: none;
+        }
+
+        .checkbox-option input:checked {
+            background: #ffffff;
+            border-color: #ffffff;
+        }
     </style>
 </head>
 
@@ -222,6 +255,14 @@
                     <div class="option" data-value="car.glb">CLASSIC MUSCLE</div>
                     <div class="option selected" data-value="car_mazda.glb">MX5 TUNER</div>
                 </div>
+            </div>
+
+            <div class="selection-group">
+                <h3>PREFERENCES</h3>
+                <label class="checkbox-option">
+                    <input type="checkbox" id="preserve-state-chk">
+                    <span>PRESERVE SESSION STATE</span>
+                </label>
             </div>
 
             <button id="start-btn">START SIMULATION</button>
